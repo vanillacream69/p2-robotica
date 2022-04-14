@@ -1,6 +1,7 @@
 #include <webots/robot.h>
 #include <webots/motor.h>
 #include <webots/distance_sensor.h>
+#include <webots/position_sensor.h>
 #include <webots/gyro.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +21,7 @@
 WbDeviceTag sensores_ultr[5];
 WbDeviceTag sensores_ir[8];
 WbDeviceTag left_motor, right_motor;
+WbDeviceTag left_encoder, right_encoder;
 WbDeviceTag gyro;
 
 static const char *sensores_ultrasonidos[ULTRASONIC_SENSORS]={
@@ -47,12 +49,23 @@ void init(){
 
   left_motor = wb_robot_get_device("left wheel motor");
   right_motor = wb_robot_get_device("right wheel motor");
+  left_encoder = wb_robot_get_device("left wheel sensor");
+  right_encoder = wb_robot_get_device("right wheel sensor");
+
+  wb_position_sensor_enable(left_encoder,TIME_STEP);
+  wb_position_sensor_enable(right_encoder,TIME_STEP);
+
   wb_motor_set_position(left_motor, INFINITY);
   wb_motor_set_position(right_motor, INFINITY);
 
   // set up the motor speeds at 10% of the MAX_SPEED.
   wb_motor_set_velocity(left_motor, 0.0);
   wb_motor_set_velocity(right_motor, 0.0);
+}
+
+void move(WbDeviceTag left, WbDeviceTag right, int sp){
+  wb_motor_set_velocity(left, sp);
+  wb_motor_set_velocity(right, sp);
 }
 
 void fw(WbDeviceTag left, WbDeviceTag right){
@@ -65,25 +78,91 @@ void bw(WbDeviceTag left, WbDeviceTag right){
   wb_motor_set_velocity(right, -SPEED);
 }
 
+void stop(WbDeviceTag left, WbDeviceTag right){
+  wb_motor_set_velocity(left, 0.0);
+  wb_motor_set_velocity(right, 0.0);
+}
+
+// int done = 0;
+float current_time = 0;
+float start_time = 0;
+float duration = 0;
+float velocidad_lineal = 0;
+int i=0;
 // void moverseUnaCasilla(){
-//   float duration;
-//   float start;
-//   current_time = wb_robot_get_time();
+//   // int done = 0;
+//   // float start_time = wb_robot_get_time();
+//   float current_time = 0, duration = 0;
+//   if(current_time < start_time + duration){
+//     current_time = wb_robot_get_time();
+//     duration = 4*TAMAÑO_CELDA/(RADIO_RUEDA * SPEED);
+//     printf("TIME: %f\t START: %f\n",current_time,start_time);
+//     printf("DURATION: %f\n",duration);
+//     fw(left_motor, right_motor);
+//   } else {
+//     stop(left_motor, right_motor);
+//   }
 // }
 
-// double current_time = 0;
+int casilla(){
+  int sp = SPEED;
+  current_time = wb_robot_get_time();
+  duration = 4*TAMAÑO_CELDA/(RADIO_RUEDA * SPEED);
+  if(current_time >= start_time + duration){
+    sp = 0.0;
+    printf("MOVIDO %i CASILLA!\n",++i);
+    start_time = wb_robot_get_time();
+  } else {
+    sp = SPEED;
+  }
+  if (i==3){
+    sp = 0.0;
+  }
+  return sp;
+}
 
 int main(int argc, char **argv) {
+  float sp = SPEED;
+
+  start_time = wb_robot_get_time();
   init();
-  wb_gyro_enable(gyro, 1000);
   while (wb_robot_step(TIME_STEP) != -1) {
-    const double *a=wb_gyro_get_values(gyro);
-    fw(left_motor,right_motor);
-    printf("TIME: %f\n",wb_robot_get_time());
-    printf("PERIOD: %f\n",a[0]);
+    // current_time = wb_robot_get_time();
+    // duration = 4*TAMAÑO_CELDA/(RADIO_RUEDA * SPEED);
+    // if(current_time >= start_time + duration){
+    //   sp = 0.0;
+    //   printf("MOVIDO %i CASILLA!\n",++i);
+    //   start_time = wb_robot_get_time();
+    // } else {
+    //   sp = SPEED;
+    // }
+    // if(i==3){
+    //   sp = 0.0;
+    // }
+    move(left_motor, right_motor, casilla());
+    // moverseUnaCasilla(left_motor, right_motor);
   }
-
   wb_robot_cleanup();
-
   return 0;
 }
+
+// int main(int argc, char **argv) {
+//   int done = 0;
+//   float sp = SPEED;
+//   start_time = wb_robot_get_time();
+//   init();
+//   while (wb_robot_step(TIME_STEP) != -1) {
+//     current_time = wb_robot_get_time();
+//     duration = 4*TAMAÑO_CELDA/(RADIO_RUEDA * SPEED);
+//     if(current_time > start_time + duration){
+//       stop(left_motor, right_motor);
+//     } else {
+//       printf("TIME: %f\t START: %f\n",current_time,start_time);
+//       printf("DURATION: %f\n",duration);
+//       fw(left_motor, right_motor);
+//     }
+//     // moverseUnaCasilla(left_motor, right_motor);
+//   }
+//   wb_robot_cleanup();
+//   return 0;
+// }
